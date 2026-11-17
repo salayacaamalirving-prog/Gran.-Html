@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
-<title>ESQUIVA Online</title>
+<title>Online</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@700;900&display=swap">
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
@@ -39,14 +39,15 @@ input{width:100%;padding:22px;font:900 32px var(--ui);text-align:center;border-r
 .sk{width:58px;height:58px;border-radius:14px;border:4px solid #3a3a8a;color:#fff;font:900 14px var(--ui);padding:0}.sk.on{border-color:#fff}
 </style></head><body>
 <div id="stage">
-<div class="scr on" id="s-login" style="justify-content:center"><h1>ESQUIVA<br>ONLINE</h1><div class="muted">Entra con tu cuenta del juego</div>
+<div class="scr on" id="s-login" style="justify-content:center"><h1>ONLINE</h1><div class="muted">Entra con tu cuenta del juego</div>
 <input id="n" placeholder="Nombre" maxlength="12"><input id="p" type="password" placeholder="Contraseña">
 <button class="btn" data-a="login">ENTRAR</button></div>
 
 <div class="scr" id="s-menu"><h1>ONLINE</h1><div class="h2 gold" id="hi"></div>
 <div class="box"><div class="px">TU PIEL</div><div id="skins"></div><div class="muted" id="skinNote" style="font-size:20px"></div></div>
 <div class="box"><div class="px">CREAR SALA</div><div class="row"><button class="chip on" data-a="m0">NORMAL</button><button class="chip" data-a="m1">EXTREMO</button></div><button class="btn green" data-a="create">CREAR SALA</button></div>
-<div class="box"><div class="px">UNIRSE CON CÓDIGO</div><input id="code" inputmode="numeric" maxlength="4" placeholder="0000" style="letter-spacing:.25em"><button class="btn" data-a="join">UNIRSE</button></div></div>
+<div class="box"><div class="px">UNIRSE CON CÓDIGO</div><input id="code" inputmode="numeric" maxlength="4" placeholder="0000" style="letter-spacing:.25em"><button class="btn" data-a="join">UNIRSE</button></div>
+<button class="btn red" data-a="logout" style="font-size:24px;padding:16px">CERRAR SESIÓN</button></div>
 
 <div class="scr" id="s-room"></div>
 <canvas id="cv" width="720" height="1280"></canvas>
@@ -74,22 +75,20 @@ function fit(){const s=Math.min(innerWidth/720,innerHeight/1280);$("#stage").sty
 function mk(w,h,f){const c=document.createElement("canvas");c.width=w;c.height=h;f(c.getContext("2d"),w,h);return c}
 function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function shade(hex,a){const n=parseInt(hex.slice(1),16),f=v=>clamp(Math.round(a<0?v*(1+a):v+(255-v)*a),0,255);return"rgb("+f(n>>16)+","+f(n>>8&255)+","+f(n&255)+")"}
-function cubeTex(col){return mk(128,128,g=>{rr(g,6,6,116,116,28);const gr=g.createLinearGradient(0,6,0,122);gr.addColorStop(0,shade(col,.55));gr.addColorStop(.5,col);gr.addColorStop(1,shade(col,-.4));g.fillStyle=gr;g.fill();g.lineWidth=6;g.strokeStyle=shade(col,-.55);g.stroke();
- g.save();rr(g,6,6,116,116,28);g.clip();g.fillStyle="rgba(255,255,255,.26)";g.fillRect(0,0,128,46);g.restore();
- for(const x of[44,84]){g.fillStyle="#0b1030";g.beginPath();g.ellipse(x,74,11,19,0,0,TAU);g.fill();g.fillStyle="#fff";g.beginPath();g.arc(x+3,66,4.5,0,TAU);g.fill()}})}
-function buildTex(){
+const PAT=["..oooooooooooo..", ".ollllllllllllo.", "ollllllllllllllo", "olaaaaaaaaaaaado", "olaaaaaaaaaaaado", "olaawkaaaawkaado", "olaakkaaaakkaado", "olaakkaaaakkaado", "olaakkaaaakkaado", "olaaaaaaaaaaaado", "olaaaaaaaaaaaado", "oaaaaaaaaaaaaddo", "oddddddddddddddo", ".oddddddddddddo.", "..oooooooooooo..", "................"];
+function cubeTex(col){const P={o:shade(col,-.6),l:shade(col,.6),a:col,d:shade(col,-.35),k:"#0b1030",w:"#fff"};return mk(16,16,g=>{PAT.forEach((row,y)=>{for(let x=0;x<16;x++){const c=P[row[x]];if(c){g.fillStyle=c;g.fillRect(x,y,1,1)}}})})}
+function pxc(n,f){return mk(n,n,g=>{for(let y=0;y<n;y++)for(let x=0;x<n;x++){const c=f(x+.5,y+.5);if(c){g.fillStyle=c;g.fillRect(x,y,1,1)}}})}
+function buildTex(){ctx.imageSmoothingEnabled=false;
  IM.player=cubeTex("#4fc3ff");
- IM.proj=mk(96,96,g=>{let t=g.createLinearGradient(0,0,50,0);t.addColorStop(0,"rgba(255,90,20,0)");t.addColorStop(1,"rgba(255,150,30,.85)");g.fillStyle=t;g.beginPath();g.moveTo(0,48);g.lineTo(52,24);g.lineTo(52,72);g.closePath();g.fill();
-  const r=g.createRadialGradient(52,48,2,52,48,30);r.addColorStop(0,"#fff");r.addColorStop(.3,"#ffe27a");r.addColorStop(.7,"#ff7a1a");r.addColorStop(1,"rgba(190,30,0,.15)");g.fillStyle=r;g.beginPath();g.arc(52,48,30,0,TAU);g.fill()});
- IM.laser=mk(256,64,g=>{const t=g.createLinearGradient(0,0,0,64);for(const[o,c]of[[0,"rgba(255,30,30,0)"],[.25,"rgba(255,50,50,.55)"],[.42,"#ff9a8a"],[.5,"#fff"],[.58,"#ff9a8a"],[.75,"rgba(255,50,50,.55)"],[1,"rgba(255,30,30,0)"]])t.addColorStop(o,c);g.fillStyle=t;g.fillRect(0,0,256,64);
-  g.fillStyle="rgba(255,255,255,.35)";for(let i=0;i<9;i++)g.fillRect(i*30,29,14,6)});
- IM.warn=mk(128,128,g=>{g.lineJoin="round";g.beginPath();g.moveTo(64,10);g.lineTo(120,112);g.lineTo(8,112);g.closePath();const t=g.createLinearGradient(0,10,0,112);t.addColorStop(0,"#ff8a5c");t.addColorStop(1,"#d61f1f");g.fillStyle=t;g.fill();g.lineWidth=8;g.strokeStyle="#fff";g.stroke();g.fillStyle="#fff";g.fillRect(58,44,12,36);g.beginPath();g.arc(64,94,7,0,TAU);g.fill()});
- IM.target=mk(128,128,g=>{g.strokeStyle="#ffb333";g.lineWidth=7;for(const r of[54,34]){g.beginPath();g.arc(64,64,r,0,TAU);g.stroke()}g.fillStyle="#ffb333";g.beginPath();g.arc(64,64,9,0,TAU);g.fill();for(let i=0;i<4;i++){g.save();g.translate(64,64);g.rotate(i*TAU/4);g.fillRect(-4,-62,8,24);g.restore()}});
- IM.bg=mk(W+60,H+60,(g,w,h)=>{const r=mulberry32(7);let t=g.createLinearGradient(0,0,0,h);t.addColorStop(0,"#0a0930");t.addColorStop(.5,"#16124a");t.addColorStop(1,"#0d0b2f");g.fillStyle=t;g.fillRect(0,0,w,h);
-  for(const[x,y,s,c]of[[.2,.25,700,"90,70,255"],[.85,.6,800,"40,140,255"],[.3,.9,600,"200,70,200"]]){const q=g.createRadialGradient(x*w,y*h,0,x*w,y*h,s/2);q.addColorStop(0,"rgba("+c+",.28)");q.addColorStop(1,"rgba("+c+",0)");g.fillStyle=q;g.fillRect(0,0,w,h)}
-  for(let i=0;i<170;i++){const x=r()*w,y=r()*h,z=r()<.12?2.6:1.3;g.fillStyle="rgba(255,255,255,"+(.25+r()*.6)+")";g.fillRect(x,y,z,z)}
-  g.strokeStyle="rgba(140,160,255,.07)";g.lineWidth=2;g.beginPath();for(let x=30;x<=w;x+=90){g.moveTo(x,0);g.lineTo(x,h)}for(let y=30;y<=h;y+=90){g.moveTo(0,y);g.lineTo(w,y)}g.stroke();
-  const v=g.createRadialGradient(w/2,h/2,h*.35,w/2,h/2,h*.75);v.addColorStop(0,"rgba(0,0,0,0)");v.addColorStop(1,"rgba(0,0,0,.45)");g.fillStyle=v;g.fillRect(0,0,w,h)})}
+ IM.proj=pxc(16,(x,y)=>{const d=Math.hypot(x-10,y-8);if(d<2.2)return"#fff";if(d<3.6)return"#ffe04a";if(d<5)return"#ff8a1a";if(d<6)return"#c4321a";if(x<10&&Math.abs(y-8)<x/10*4&&((x|0)+(y|0)&1||x>5))return x>6?"#ff9a2a":"#c4321a";return""});
+ IM.laser=mk(64,12,g=>{const C=[0,"#a00","#e22","#ff5a4a","#ffb0a0","#fff","#fff","#ffb0a0","#ff5a4a","#e22","#a00",0];for(let y=0;y<12;y++)for(let x=0;x<64;x++){let c=C[y];if(!c)continue;if(y===3||y===8)c=(x>>2&1)?"#ff5a4a":"#ff8a7a";if((y===5||y===6)&&x%8===0)c="#ffe0d8";g.fillStyle=c;g.fillRect(x,y,1,1)}});
+ IM.warn=pxc(16,(x,y)=>{const h=(y-1)*.5,a=Math.abs(x-8);if(y<1||y>14.5||a>h)return"";if(x>7&&x<9&&y>4.9&&y<10||x>7&&x<9&&y>11&&y<13)return"#fff";if(a>h-1.2||y>13.4)return"#fff";return y<8?"#ff7a4a":"#e8392b"});
+ IM.target=pxc(16,(x,y)=>{const d=Math.hypot(x-8,y-8);if(d>6.2&&d<7.7||d>3.4&&d<4.8||d<1.6)return"#ffb333";if((Math.abs(x-8)<.8||Math.abs(y-8)<.8)&&d>4.8&&d<7.9)return"#ffb333";return""});
+ IM.bg=mk(130,224,(g,w,h)=>{const r=mulberry32(7),B=[[.2,.25,.4,[90,70,255]],[.85,.6,.45,[40,140,255]],[.3,.9,.35,[200,70,200]]];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const k=Math.abs(y/h-.5)*2;let c=[10+6*(1-k),9+5*(1-k),48+30*(1-k)];
+   for(const[bx,by,rad,col]of B){const a=Math.floor(Math.max(0,1-Math.hypot(x-bx*w,y-by*h)/(rad*h))*4)/4*.3;c=c.map((v,i)=>v+col[i]*a)}
+   if(x%15===0||y%15===0)c=c.map(v=>v+10);g.fillStyle="rgb("+c.map(v=>clamp(v|0,0,255))+")";g.fillRect(x,y,1,1)}
+  for(let i=0;i<70;i++){g.fillStyle=r()<.2?"#fff":"#8c94d8";g.fillRect(r()*w|0,r()*h|0,1,1)}})}
 
 /* ---------- Piel: la del juego (si se encuentra), o la que elijas aquí. Se comparte con los demás jugadores ---------- */
 const SKK="esq_online_skin",SKC=["#4fc3ff","#ff5a7a","#4ade80","#ffd93d","#b07cff","#ff9a3c"],ST={};
@@ -102,7 +101,7 @@ function mySkin(){return okSkin(lsGet(SKK))||detectSkin()||"c:"+SKC[0]}
 function skinOf(id){return(roster.find(r=>r.id===id)||{}).skin||""}
 function skinTex(s){if(!s)return IM.player;let t=ST[s];if(!t){if(s[0]==="c")t=ST[s]=cubeTex(s.slice(2));else{t=ST[s]=new Image();t.onload=()=>{if($("#skins").children.length)renderSkins()};t.src=s}}return t.complete===false||t.naturalWidth===0?IM.player:t}
 function setSkin(c){try{c?localStorage.setItem(SKK,"c:"+c):localStorage.removeItem(SKK)}catch(e){}renderSkins()}
-function renderSkins(){const el=$("#skins"),own=lsGet(SKK),pv=document.createElement("canvas");pv.width=pv.height=72;pv.getContext("2d").drawImage(skinTex(mySkin()),0,0,72,72);el.innerHTML="";el.append(pv);
+function renderSkins(){const el=$("#skins"),own=lsGet(SKK),pv=document.createElement("canvas");pv.width=pv.height=64;const pg=pv.getContext("2d");pg.imageSmoothingEnabled=false;pg.drawImage(skinTex(mySkin()),0,0,64,64);el.innerHTML="";el.append(pv);
  const a=document.createElement("button");a.className="sk"+(own?"":" on");a.dataset.a="sk";a.dataset.c="";a.textContent="AUTO";a.style.background="#1a1745";el.append(a);
  for(const c of SKC){const b=document.createElement("button");b.className="sk"+(own==="c:"+c?" on":"");b.dataset.a="sk";b.dataset.c=c;b.style.background=c;el.append(b)}
  $("#skinNote").textContent=own?"Piel elegida aquí":detectSkin()?"Usando la piel que tienes puesta en el juego":"No encontré tu piel del juego: elige una"}
@@ -120,11 +119,15 @@ $("#chatin").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat()});
 /* ---------- Cuenta (se verifica contra accounts.json del juego) ---------- */
 let me={id:"",name:""};$("#n").value=new URLSearchParams(location.search).get("n")||"";
 async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+const ACC_K="esq_online_acc";
+function enter(a,n){me.name=String(a.n||n).slice(0,12);$("#hi").textContent="Hola, "+me.name;show("menu");renderSkins();toast("¡Listo!",900)}
+async function autoLogin(){let s=null;try{s=JSON.parse(localStorage.getItem(ACC_K)||"null")}catch(e){}if(!s||!s.n||!s.h)return;toast("Entrando…",8000);
+ try{const d=await(await fetch(ACCOUNTS_URL+"?t="+Date.now())).json(),a=(d.accounts||{})[s.n];if(a&&a.h===s.h)enter(a,s.n);else{try{localStorage.removeItem(ACC_K)}catch(e){}toast("Vuelve a entrar con tu cuenta")}}catch(e){toast("No se pudo verificar (¿sin internet?)")}}
 async function login(){const n=$("#n").value.trim(),p=$("#p").value;if(n.length<3||p.length<4)return toast("Escribe nombre y contraseña");toast("Verificando…",8000);
  try{const d=await(await fetch(ACCOUNTS_URL+"?t="+Date.now())).json(),a=(d.accounts||{})[n.toLowerCase()];
   if(!a)return toast("Esa cuenta no existe. Créala primero en el juego.");
-  if(a.h!==await sha(n.toLowerCase()+":"+p+":esquiva-v1"))return toast("Contraseña incorrecta");
-  me.name=String(a.n||n).slice(0,12);$("#hi").textContent="Hola, "+me.name;show("menu");renderSkins();toast("¡Listo!",900)}catch(e){toast("No se pudo verificar (¿sin internet?)")}}
+  const h=await sha(n.toLowerCase()+":"+p+":esquiva-v1");if(a.h!==h)return toast("Contraseña incorrecta");try{localStorage.setItem(ACC_K,JSON.stringify({n:n.toLowerCase(),h}))}catch(e){}
+  enter(a,n)}catch(e){toast("No se pudo verificar (¿sin internet?)")}}
 
 /* ---------- Red: WebRTC (PeerJS). Posiciones por canal SIN espera (unreliable) = menos lag ---------- */
 let peer,isHost=false,code="",mode=0,state="menu",hostId="",roster=[],conns={},pconns={},hostC=null,hostP=null,G=null,endRows=null;
@@ -184,11 +187,11 @@ class Player{constructor(x,y){this.x=this.tx=x;this.y=this.ty=y;this.vx=0;this.r
 function drawCube(c,x,y,rot,flap,col,alpha,img){c.save();c.translate(x,y);c.rotate(rot);c.globalAlpha=alpha;
  if(col){c.strokeStyle=col;c.lineWidth=5;c.beginPath();c.arc(0,0,38,0,TAU);c.stroke()}
  for(const s of[-1,1]){c.save();c.translate(s*20,0);c.rotate((s<0?1:-1)*flap);c.scale(s,1);c.globalAlpha=alpha*.9;const k=56/IM.wing.width;c.drawImage(IM.wing,0,-IM.wing.height*k/2,56,IM.wing.height*k);c.restore()}
- c.drawImage(img||IM.player,-27,-27,54,54);c.restore()}
+ c.drawImage(img||IM.player,-24,-24,48,48);c.restore()}
 class Proj{constructor(x,y,vx,vy){this.x=x;this.y=y;this.vx=vx;this.vy=vy;this.age=0;this.active=true;this.entered=false;this.R=12}
  update(dt){this.x+=this.vx*dt;this.y+=this.vy*dt;this.age+=dt;const i=this.x>=0&&this.x<=W&&this.y>=0&&this.y<=H;
   if(i)this.entered=true;else if(this.entered&&!(this.x>=-12&&this.x<=W+12&&this.y>=-12&&this.y<=H+12))this.active=false;else if(this.age>14)this.active=false}
- draw(c){drawGlow(c,"255,128,26",.85,this.x,this.y,70*(1+.12*Math.sin(this.age*30)));c.save();c.translate(this.x,this.y);c.rotate(Math.atan2(this.vy,this.vx));c.drawImage(IM.proj,-34,-34,68,68);c.restore()}}
+ draw(c){drawGlow(c,"255,128,26",.85,this.x,this.y,70*(1+.12*Math.sin(this.age*30)));c.save();c.translate(this.x,this.y);c.rotate(Math.atan2(this.vy,this.vx));c.drawImage(IM.proj,-24,-24,48,48);c.restore()}}
 class Laser{constructor(x,y,dx,dy,warn,fire){Object.assign(this,{x,y,dx,dy,warn,fireT:fire,t:0,state:0,bf:0,pulse:0,done:false});this.len=Math.hypot(W,H)*1.3+200;
   let tx=Infinity,ty=Infinity;if(dx>1e-4)tx=(W-x)/dx;else if(dx<-1e-4)tx=-x/dx;if(dy>1e-4)ty=(H-y)/dy;else if(dy<-1e-4)ty=-y/dy;
   let d=Math.min(tx,ty);if(!isFinite(d)||d<0)d=0;this.ex=x+dx*d;this.ey=y+dy*d;const m=60;this.sx=clamp(x,m,W-m);this.sy=clamp(y,m,H-m);this.tx=clamp(this.ex,m,W-m);this.ty=clamp(this.ey,m,H-m)}
@@ -243,7 +246,7 @@ class Game{constructor(d){this.extreme=d.mode===1;this.order=d.order;this.t=0;th
    if(this.alive){for(const q of this.proj)if(q.active&&Math.hypot(q.x-p.x,q.y-p.y)<p.hit+q.R){q.active=false;this.die();break}
     if(this.alive)for(const l of this.lasers)if(l.hits(p.x,p.y,p.hit)){this.die();break}}}}
  draw(){const c=ctx;c.save();if(this.shake>0)c.translate((Math.random()*2-1)*this.shake*18,(Math.random()*2-1)*this.shake*18);
-  c.drawImage(IM.bg,-30,-30);
+  c.drawImage(IM.bg,-30,-30,780,1344);
   for(const q of this.proj)q.draw(c);
   for(const f of this.fx){c.globalAlpha=clamp(f.l,0,1);c.fillStyle=f.c;c.fillRect(f.x-f.s/2,f.y-f.s/2,f.s,f.s)}c.globalAlpha=1;
   for(const id in this.remotes){const r=this.remotes[id];if(!r.alive)continue;drawCube(c,r.x,r.y,r.rot,Math.sin(performance.now()/60)*.3,r.col,.95,skinTex(skinOf(id)));
@@ -274,7 +277,7 @@ function renderEnd(){const el=$("#end");if(!endRows||!el.classList.contains("on"
  <div class="box">${roster.map(r=>`<div class="lrow ${r.id===me.id?"me":""}"><span>${esc(r.name)}${r.id===me.id?" (tú)":""}${r.id===hostId?" ★":""}</span><span class="tag ${r.ready?"ok":""}">${r.ready?"LISTO":"EN ESPERA"}</span></div>`).join("")}</div>
  <button class="btn green" data-a="again">${m.ready?"LISTO · ESPERANDO… (toca para cancelar)":"VOLVER A JUGAR"}</button>
  ${isHost&&m.ready&&ready>=2?'<button class="btn" data-a="start">INICIAR AHORA ('+ready+' listos)</button>':""}
- <button class="btn red" data-a="menu">VOLVER AL MENÚ</button>`}
+ <button class="btn red" data-a="menu">VOLVER A ONLINE</button>`}
 
 /* ---------- Botones ---------- */
 let chip=0;
@@ -285,7 +288,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(!b
  else if(a==="start")hostStart();
  else if(a==="menu")leaveAll();
  else if(a==="again"){const m=roster.find(r=>r.id===me.id);if(!m)return;const v=!m.ready;if(isHost){m.ready=v;sendRoster()}else{m.ready=v;send(hostC,{t:"again",v});renderEnd()}}
- else if(a==="chat")toggleChat();else if(a==="send")sendChat();else if(a==="sk")setSkin(b.dataset.c||"");
+ else if(a==="logout"){try{localStorage.removeItem(ACC_K)}catch(e){}$("#p").value="";show("login")}else if(a==="chat")toggleChat();else if(a==="send")sendChat();else if(a==="sk")setSkin(b.dataset.c||"");
   else if(a==="quit"){if(confirm("¿Salir de la partida?"))leaveAll()}});
-imgReady.then(()=>{buildTex();renderSkins();requestAnimationFrame(loop)});
+imgReady.then(()=>{buildTex();renderSkins();requestAnimationFrame(loop);autoLogin()});
 </script></body></html>
