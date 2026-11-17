@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ESQUIVA Online</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1030;color:#fff;font-family:sans-serif;text-align:center;touch-action:none}
+.box{max-width:380px;margin:30px auto;padding:16px}input,button{width:100%;padding:14px;margin:6px 0;font-size:18px;border-radius:8px;border:0}
+button{background:#4aa3ff;color:#fff;font-weight:bold}button.g{background:#44c46a}#msg{color:#ffd966;min-height:24px}
+canvas{display:block;margin:auto;background:#101a45;max-width:100vw;max-height:100vh}.hide{display:none}
+</style></head><body>
+<div id="login" class="box"><h1>ESQUIVA ONLINE</h1>
+<input id="n" placeholder="Nombre de tu cuenta" maxlength="12">
+<input id="p" type="password" placeholder="Contraseña">
+<button onclick="login()">ENTRAR</button></div>
+
+<div id="lobby" class="box hide"><h2 id="hi"></h2>
+<button class="g" onclick="host()">CREAR SALA</button>
+<input id="code" placeholder="Código de sala" maxlength="5" style="text-transform:uppercase">
+<button onclick="join()">UNIRSE</button>
+<div id="room" class="hide"><h3>Sala: <span id="rc"></span></h3><div id="list"></div>
+<button id="start" class="g hide" onclick="startGame()">INICIAR (mín. 2)</button></div></div>
+<p id="msg"></p>
+<canvas id="c" width="360" height="640" class="hide"></canvas>
+<script>
+// ====== CONFIGURA AQUÍ (mismo repo que usa el juego) ======
+const ACCOUNTS_URL="https://raw.githubusercontent.com/salayacaamalirving-prog/game1-scores/main/accounts.json";
+const $=id=>document.getElementById(id),msg=t=>$("msg").textContent=t||"";
+let me="",peer,conns={},isHost=false,roster={},G=null,my={x:180,y:560,alive:true},state=null;
+$("n").value=new URLSearchParams(location.search).get("n")||"";
+
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function login(){
+  const n=$("n").value.trim(),p=$("p").value;if(n.length<3||p.length<4)return msg("Escribe nombre y contraseña");
+  msg("Verificando…");
+  try{const r=await fetch(ACCOUNTS_URL+"?t="+Date.now());const d=await r.json();
+    const a=(d.accounts||{})[n.toLowerCase()];
+    if(!a)return msg("Esa cuenta no existe. Créala primero en el juego.");
+    if(a.h!==await sha(n.toLowerCase()+":"+p+":esquiva-v1"))return msg("Contraseña incorrecta");
+    me=a.n||n;$("login").classList.add("hide");$("lobby").classList.remove("hide");$("hi").textContent="Hola, "+me;msg();
+  }catch(e){msg("No se pudo verificar (¿sin internet?)")}
+}
+// ====== SALAS (WebRTC con PeerJS: funciona entre redes distintas) ======
+function code(){return[...Array(5)].map(()=>"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.random()*32|0]).join("")}
+function showRoom(c){$("room").classList.remove("hide");$("rc").textContent=c}
+function renderList(){$("list").innerHTML=Object.values(roster).map(r=>"<p>• "+r.name.replace(/</g,"&lt;")+"</p>").join("")}
+function host(){
+  const c=code();isHost=true;peer=new Peer("esquiva-"+c);
+  peer.on("open",id=>{roster={[id]:{name:me}};showRoom(c);renderList();$("start").classList.remove("hide");msg("Comparte el código "+c)});
+  peer.on("error",e=>msg("Error: "+e.type));
+  peer.on("connection",cn=>{
+    if(Object.keys(roster).length>=4||G){cn.on("open",()=>cn.close());return}
+    cn.on("data",d=>{if(d.t=="hello"){roster[cn.peer]={name:d.name};conns[cn.peer]=cn;bc({t:"roster",roster});renderList()}
+      else if(d.t=="pos"&&G&&G.p[cn.peer]){Object.assign(G.p[cn.peer],{x:d.x,y:d.y})}});
+    cn.on("close",()=>{delete roster[cn.peer];delete conns[cn.peer];if(G&&G.p[cn.peer])G.p[cn.peer].alive=false;bc({t:"roster",roster});renderList()});
+  });
+}
+function join(){
+  const c=$("code").value.trim().toUpperCase();if(c.length!=5)return msg("Código de 5 letras");
+  peer=new Peer();msg("Conectando…");
+  peer.on("error",e=>msg(e.type=="peer-unavailable"?"Sala no encontrada":"Error: "+e.type));
+  peer.on("open",()=>{const cn=peer.connect("esquiva-"+c);conns.host=cn;
+    cn.on("open",()=>{cn.send({t:"hello",name:me});showRoom(c);msg("En la sala. Espera al anfitrión")});
+    cn.on("data",onMsg);cn.on("close",()=>{msg("El anfitrión salió");location.reload()});});
+}
+function bc(m){Object.values(conns).forEach(c=>c.open&&c.send(m))}
+function onMsg(d){
+  if(d.t=="roster"){roster=d.roster;renderList()}
+  else if(d.t=="go"){begin(d.ids)}
+  else if(d.t=="state"){state=d}
+  else if(d.t=="end"){endGame(d.win)}
+}
+// ====== JUEGO (el anfitrión simula; todos ven lo mismo) ======
+const cv=$("c"),cx=cv.getContext("2d"),W=360,H=640;let ids=[],over=false,pid=()=>peer.id;
+function startGame(){if(Object.keys(roster).length<2)return msg("Mínimo 2 jugadores");
+  ids=Object.keys(roster);bc({t:"go",ids});begin(ids)}
+function begin(list){
+  ids=list;over=false;state=null;my={x:180,y:560};
+  $("lobby").classList.add("hide");cv.classList.remove("hide");msg();
+  if(isHost){G={t:0,sp:[],cd:1,p:{}};ids.forEach((id,i)=>G.p[id]={x:60+i*80,y:560,alive:true})}
+  cv.onpointermove=e=>{const r=cv.getBoundingClientRect();my.x=Math.max(10,Math.min(W-10,(e.clientX-r.left)*W/r.width));my.y=Math.max(10,Math.min(H-10,(e.clientY-r.top)*H/r.height))};
+  last=performance.now();requestAnimationFrame(loop);setInterval(net,50);
+}
+let last=0;
+function net(){if(over)return;
+  if(isHost){Object.assign(G.p[pid()],my);bc({t:"state",p:G.p,sp:G.sp,t0:G.t|0})}
+  else conns.host.send({t:"pos",x:my.x,y:my.y})}
+function step(dt){
+  G.t+=dt;G.cd-=dt;
+  if(G.cd<=0){G.cd=Math.max(.3,1-G.t/90);const a=Math.random()*4|0,v=140+G.t*2;
+    let x=Math.random()*W,y=-10;if(a==1){x=W+10;y=Math.random()*H}else if(a==2){x=Math.random()*W;y=H+10}else if(a==3){x=-10;y=Math.random()*H}
+    const t=G.p[ids[Math.random()*ids.length|0]],an=Math.atan2(t.y-y,t.x-x)+(Math.random()-.5)*.6;
+    G.sp.push({x,y,vx:Math.cos(an)*v,vy:Math.sin(an)*v})}
+  G.sp.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt});G.sp=G.sp.filter(s=>s.x>-30&&s.x<W+30&&s.y>-30&&s.y<H+30);
+  for(const id of ids){const p=G.p[id];if(!p.alive)continue;
+    if(G.sp.some(s=>Math.hypot(s.x-p.x,s.y-p.y)<16))p.alive=false}
+  const al=ids.filter(i=>G.p[i].alive);
+  if(al.length<=1&&!over){const w=al[0]?roster[al[0]].name:"Nadie";bc({t:"end",win:w});endGame(w)}
+}
+function loop(now){if(over)return;const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(isHost)step(dt);
+  const s=isHost?{p:G.p,sp:G.sp,t0:G.t|0}:state;
+  cx.clearRect(0,0,W,H);
+  if(s){s.sp.forEach(q=>{cx.fillStyle="#ff6b5e";cx.beginPath();cx.arc(q.x,q.y,8,0,7);cx.fill()});
+    for(const id in s.p){const p=s.p[id];if(!p.alive)continue;const mine=id==pid();
+      const x=mine?my.x:p.x,y=mine?my.y:p.y;cx.fillStyle=mine?"#4aa3ff":"#44c46a";cx.fillRect(x-10,y-10,20,20);
+      cx.fillStyle="#fff";cx.font="12px sans-serif";cx.textAlign="center";cx.fillText(roster[id]?roster[id].name:"",x,y-16)}
+    cx.fillText(s.t0+" s",30,20)}
+  requestAnimationFrame(loop)}
+function endGame(w){over=true;cx.fillStyle="rgba(0,0,0,.7)";cx.fillRect(0,0,W,H);cx.fillStyle="#fff";cx.font="28px sans-serif";cx.textAlign="center";
+  cx.fillText("Ganó: "+w,W/2,H/2);cx.font="18px sans-serif";cx.fillText("Toca para volver",W/2,H/2+40);cv.onclick=()=>location.reload()}
+</script></body></html>
